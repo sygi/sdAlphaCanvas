@@ -135,7 +135,14 @@ class Script(scripts.Script):
             let outpaintSize = Math.round(patchSize * 7/8); 
             let currentWindow = gradioApp().getElementById('alphaWindow');
             if (currentWindow && currentWindow.patchSize != patchSize) {
-              gradioApp().getElementById('alphaWindow').remove();
+              let currentCanvas = gradioApp().getElementById('alphaCanvas');
+              currentCanvas.width = currentCanvas.width - 2 * currentWindow.outpaintSize + 2*outpaintSize;
+              currentCanvas.height = currentCanvas.height - 2 * currentWindow.outpaintSize + 2*outpaintSize;
+              currentCanvas.style.width = currentCanvas.width + 'px';
+              currentCanvas.style.height = currentCanvas.height + 'px';
+              currentWindow.patchSize = patchSize;
+              currentWindow.outpaintSize = outpaintSize;
+              currentCanvas.redrawCanvas();
             }
             if (!gradioApp().getElementById('alphaWindow')) {
                 console.info('first run. create Canvas.');
@@ -229,8 +236,8 @@ class Script(scripts.Script):
                 // Load File
                 function loadImage(image) {
                     let ctx = alphaCanvas.getContext('2d');
-                    alphaCanvas.width = image.width + 2 * outpaintSize;
-                    alphaCanvas.height = image.height + 2 * outpaintSize;
+                    alphaCanvas.width = image.width + 2 * alphaWindow.outpaintSize;
+                    alphaCanvas.height = image.height + 2 * alphaWindow.outpaintSize;
                     alphaCanvas.style.width = alphaCanvas.width + 'px';
                     alphaCanvas.style.height = alphaCanvas.height + 'px';
                     alphaCanvas.lastX = '';
@@ -240,7 +247,7 @@ class Script(scripts.Script):
                     alphaCanvas.patched = '';
                     alphaSideMenu.innerHTML = '';
                     ctx.clearRect(0, 0, alphaCanvas.width, alphaCanvas.height);
-                    ctx.drawImage(image, outpaintSize, outpaintSize);
+                    ctx.drawImage(image, alphaWindow.outpaintSize, alphaWindow.outpaintSize);
                     alphaCanvas.storeImage = image;                 
                 }
                 gradioApp().getElementById('alphaFile').onchange = function(e) {
@@ -261,8 +268,8 @@ class Script(scripts.Script):
                 // Save Image
                 gradioApp().getElementById('alphaDownload').onclick = function(e) {
                     const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = alphaCanvas.width - 2 * outpaintSize;
-                    tempCanvas.height = alphaCanvas.height - 2 * outpaintSize;
+                    tempCanvas.width = alphaCanvas.width-2*alphaWindow.outpaintSize;
+                    tempCanvas.height = alphaCanvas.height-2*alphaWindow.outpaintSize;
                     let ctx2 = tempCanvas.getContext('2d');
                     ctx2.drawImage(alphaCanvas.storeImage, 0, 0);
                     const link = document.createElement('a');
@@ -327,7 +334,7 @@ class Script(scripts.Script):
                         tempCanvasNew.width = alphaCanvas.patched.width;
                         tempCanvasNew.height = alphaCanvas.patched.height;
                         let ctx2 = tempCanvasNew.getContext('2d');
-                        ctx1.drawImage(alphaCanvas.storeImage,alphaCanvas.patchedX-outpaintSize,alphaCanvas.patchedY-outpaintSize,patchSize,patchSize,0,0,patchSize,patchSize);
+                        ctx1.drawImage(alphaCanvas.storeImage,alphaCanvas.patchedX-alphaWindow.outpaintSize,alphaCanvas.patchedY-alphaWindow.outpaintSize,alphaWindow.patchSize,alphaWindow.patchSize,0,0,alphaWindow.patchSize,alphaWindow.patchSize);
                         ctx2.drawImage(alphaCanvas.patched, 0, 0);
                         let pixelData1 = ctx1.getImageData(0, 0, tempCanvasOrig.width, tempCanvasOrig.height).data;
                         let pixel2 = ctx2.getImageData(0, 0, tempCanvasNew.width, tempCanvasNew.height);
@@ -385,23 +392,22 @@ class Script(scripts.Script):
                     if (alphaCanvas.patched && alphaCanvas.storeImage) {
                         let leftShift = 0;
                         let topShift = 0;
-                        let shift = outpaintSize;
-                        let xMove = alphaCanvas.patchedX - shift;
-                        let yMove = alphaCanvas.patchedY - shift;
+                        let xMove = alphaCanvas.patchedX - alphaWindow.outpaintSize;
+                        let yMove = alphaCanvas.patchedY - alphaWindow.outpaintSize;
                         let newwidth = alphaCanvas.storeImage.width;
                         let newheight = alphaCanvas.storeImage.height;
-                        if (alphaCanvas.patchedX < shift) {
-                            newwidth = newwidth + (shift - alphaCanvas.patchedX);
-                            leftShift = (shift - alphaCanvas.patchedX);
+                        if (alphaCanvas.patchedX < alphaWindow.outpaintSize) {
+                            newwidth = newwidth + (alphaWindow.outpaintSize - alphaCanvas.patchedX);
+                            leftShift = (alphaWindow.outpaintSize - alphaCanvas.patchedX);
                             xMove = 0;
                         }
-                        if (alphaCanvas.patchedY < shift) {
-                            newheight = newheight + (shift - alphaCanvas.patchedY);
-                            topShift = (shift - alphaCanvas.patchedY);
+                        if (alphaCanvas.patchedY < alphaWindow.outpaintSize) {
+                            newheight = newheight + (alphaWindow.outpaintSize - alphaCanvas.patchedY);
+                            topShift = (alphaWindow.outpaintSize - alphaCanvas.patchedY);
                             yMove = 0;
                         }
-                        if (alphaCanvas.patchedX + (patchSize - shift) >newwidth) newwidth = alphaCanvas.patchedX + (patchSize - shift);
-                        if (alphaCanvas.patchedY + (patchSize - shift) >newheight) newheight = alphaCanvas.patchedY + (patchSize - shift);
+                        if (alphaCanvas.patchedX + (alphaWindow.patchSize - alphaWindow.outpaintSize) >newwidth) newwidth = alphaCanvas.patchedX + (alphaWindow.patchSize - alphaWindow.outpaintSize);
+                        if (alphaCanvas.patchedY + (alphaWindow.patchSize - alphaWindow.outpaintSize) >newheight) newheight = alphaCanvas.patchedY + (alphaWindow.patchSize - alphaWindow.outpaintSize);
                         const tempCanvas = document.createElement('canvas');
                         tempCanvas.width = newwidth;
                         tempCanvas.height = newheight;
@@ -421,8 +427,8 @@ class Script(scripts.Script):
                 function importRegion(image) {
                     let ctx = alphaCanvas.getContext('2d');
                     const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = patchSize;
-                    tempCanvas.height = patchSize;
+                    tempCanvas.width = alphaWindow.patchSize;
+                    tempCanvas.height = alphaWindow.patchSize;
                     let ctx2 = tempCanvas.getContext('2d');
                     ctx2.drawImage(image, 0,0);
                     alphaCanvas.patched = tempCanvas;
@@ -432,8 +438,8 @@ class Script(scripts.Script):
                 
                 function convertToDataUrl(image) {
                     const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = patchSize;
-                    tempCanvas.height = patchSize;
+                    tempCanvas.width = alphaWindow.patchSize;
+                    tempCanvas.height = alphaWindow.patchSize;
                     let ctx2 = tempCanvas.getContext('2d');
                     ctx2.drawImage(image, 0,0);
                     return tempCanvas.toDataURL('image/png');
@@ -483,7 +489,7 @@ class Script(scripts.Script):
                 function redrawCanvas() {
                     let ctx = alphaCanvas.getContext('2d');
                     ctx.clearRect(0, 0, alphaCanvas.width, alphaCanvas.height);
-                    ctx.drawImage(alphaCanvas.storeImage, outpaintSize, outpaintSize, alphaCanvas.width-2*outpaintSize, alphaCanvas.height-2*outpaintSize);
+                    ctx.drawImage(alphaCanvas.storeImage, alphaWindow.outpaintSize, alphaWindow.outpaintSize, alphaCanvas.width-2*alphaWindow.outpaintSize, alphaCanvas.height-2*alphaWindow.outpaintSize);
                     if (alphaCanvas.patched) {
                         const colorShift = parseFloat(gradioApp().getElementById('alphaHue').value);
                         const saturationShift = parseFloat(gradioApp().getElementById('alphaSaturation').value);
@@ -500,12 +506,12 @@ class Script(scripts.Script):
                         ctx.beginPath();
                         ctx.lineWidth = '1';
                         ctx.strokeStyle = 'white';
-                        ctx.rect(alphaCanvas.lastX, alphaCanvas.lastY, patchSize, patchSize);
+                        ctx.rect(alphaCanvas.lastX, alphaCanvas.lastY, alphaWindow.patchSize, alphaWindow.patchSize);
                         ctx.stroke();
                         ctx.beginPath();
                         ctx.lineWidth = '1';
                         ctx.strokeStyle = 'black';
-                        ctx.rect(alphaCanvas.lastX-1, alphaCanvas.lastY-1, patchSize + 2, patchSize + 2);
+                        ctx.rect(alphaCanvas.lastX-1, alphaCanvas.lastY-1, alphaWindow.patchSize + 2, alphaWindow.patchSize + 2);
                         ctx.stroke();
                     }
                     // drop marker
@@ -513,7 +519,7 @@ class Script(scripts.Script):
                         ctx.beginPath();
                         ctx.lineWidth = '1';
                         ctx.strokeStyle = 'red';
-                        ctx.rect(alphaCanvas.markedX, alphaCanvas.markedY, patchSize, patchSize);
+                        ctx.rect(alphaCanvas.markedX, alphaCanvas.markedY, alphaWindow.patchSize, alphaWindow.patchSize);
                         ctx.stroke();
                     }  
                 }
@@ -521,17 +527,18 @@ class Script(scripts.Script):
                 gradioApp().getElementById('alphaCanvas').onclick = function(event) {
                     event.stopPropagation();
                     let rect = alphaCanvas.getBoundingClientRect();
-                    let x = Math.floor(event.clientX - rect.left) - patchSize/2;
-                    let y = Math.floor(event.clientY - rect.top) - patchSize/2;
+                    console.log("current patch size", alphaWindow.patchSize);
+                    let x = Math.floor(event.clientX - rect.left) - alphaWindow.patchSize/2;
+                    let y = Math.floor(event.clientY - rect.top) - alphaWindow.patchSize/2;
                     if (x < 0 || y<0) return;
-                    if (x > alphaCanvas.width - patchSize || y > alphaCanvas.height - patchSize) return;
+                    if (x > alphaCanvas.width - alphaWindow.patchSize || y > alphaCanvas.height - alphaWindow.patchSize) return;           
                     const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = patchSize;
-                    tempCanvas.height = patchSize;
+                    tempCanvas.width = alphaWindow.patchSize;
+                    tempCanvas.height = alphaWindow.patchSize;
                     let ctx2 = tempCanvas.getContext('2d');
                     //ctx2.fillStyle = 'rgb(0,0,0)'
                     //ctx2.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-                    ctx2.drawImage(alphaCanvas.storeImage, x-outpaintSize, y-outpaintSize, patchSize, patchSize,0,0,patchSize,patchSize);
+                    ctx2.drawImage(alphaCanvas.storeImage, x-alphaWindow.outpaintSize, y-alphaWindow.outpaintSize, alphaWindow.patchSize, alphaWindow.patchSize,0,0,alphaWindow.patchSize,alphaWindow.patchSize);
                     alphaItem.src = tempCanvas.toDataURL('image/png');
                     alphaCanvas.lastX = x;
                     alphaCanvas.lastY = y;
@@ -579,19 +586,19 @@ class Script(scripts.Script):
                 function getImageMask(image) {
                     const tempCanvas1 = document.createElement('canvas');
                     const tempCanvas2 = document.createElement('canvas');
-                    tempCanvas1.width = patchSize;
-                    tempCanvas1.height = patchSize;
-                    tempCanvas2.width = patchSize;
-                    tempCanvas2.height = patchSize;
+                    tempCanvas1.width = alphaWindow.patchSize;
+                    tempCanvas1.height = alphaWindow.patchSize;
+                    tempCanvas2.width = alphaWindow.patchSize;
+                    tempCanvas2.height = alphaWindow.patchSize;
                     let ctx1 = tempCanvas1.getContext('2d');
                     let ctx2 = tempCanvas2.getContext('2d');
                     ctx1.fillStyle = 'rgb(0,0,0)'
                     ctx1.fillRect(0, 0, tempCanvas1.width, tempCanvas1.height);
                     ctx1.drawImage(image, 0,0);
                     ctx2.drawImage(image, 0,0);
-                    let pixel1 = ctx1.getImageData(0, 0, patchSize, patchSize);
+                    let pixel1 = ctx1.getImageData(0, 0, alphaWindow.patchSize, alphaWindow.patchSize);
                     let pixelData1 = pixel1.data;
-                    let pixel2 = ctx2.getImageData(0, 0, patchSize, patchSize);
+                    let pixel2 = ctx2.getImageData(0, 0, alphaWindow.patchSize, alphaWindow.patchSize);
                     let pixelData2 = pixel2.data;
                     let transparentPixels = 0;
                     for (let y=0;y<tempCanvas1.height;y++) {
@@ -708,8 +715,13 @@ class Script(scripts.Script):
                 }
             }
             alphaWindow = gradioApp().getElementById('alphaWindow');
+            alphaWindow.patchSize = patchSize;
+            alphaWindow.outpaintSize = outpaintSize;
             alphaPosition = gradioApp().getElementById('alphaPosition');
             alphaCanvas = gradioApp().getElementById('alphaCanvas');
+            if (redrawCanvas) {
+                alphaCanvas.redrawCanvas = redrawCanvas;
+            }
             alphaFile = gradioApp().getElementById('alphaFile');
             alphaSideMenu = gradioApp().getElementById('alphaSideMenu');
             alphaTopMenu = gradioApp().getElementById('alphaTopMenu');
@@ -730,7 +742,6 @@ class Script(scripts.Script):
                 alphaPosition.innerHTML = 'F';
                 alphaPosition.style.display = 'block';
                 alphaWindow.fullS = false;
-                alphaWindow.patchSize = patchSize;
             }
             if (alphaCanvas) {
                 resetView();
